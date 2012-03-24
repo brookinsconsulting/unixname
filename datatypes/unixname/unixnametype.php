@@ -1,9 +1,9 @@
 <?php
 //
 // ## BEGIN COPYRIGHT, LICENSE AND WARRANTY NOTICE ##
-// SOFTWARE NAME: eZ publish UNIX name extension
-// SOFTWARE RELEASE: 0.x
-// COPYRIGHT NOTICE: Copyright (C) 2006-2007 SCK-CEN, Kristof Coomans
+// SOFTWARE NAME: eZ Publish UNIX name extension
+// SOFTWARE RELEASE: 2.x
+// COPYRIGHT NOTICE: Copyright (C) 2006-2007 SCK-CEN, 2008 Kristof Coomans
 // SOFTWARE LICENSE: GNU General Public License v2.0
 // NOTICE: >
 //   This program is free software; you can redistribute it and/or
@@ -23,14 +23,14 @@
 //
 // ## END COPYRIGHT, LICENSE AND WARRANTY NOTICE ##
 //
-include_once( 'kernel/classes/datatypes/ezstring/ezstringtype.php' );
-define( 'EZ_DATATYPESTRING_UNIXNAME', 'unixname' );
 
 class UnixNameType extends eZStringType
 {
+    const DATA_TYPE_STRING = 'unixname';
+
     function UnixNameType()
     {
-        $this->eZDataType( EZ_DATATYPESTRING_UNIXNAME, ezi18n( 'kernel/classes/datatypes', 'UNIX name', 'Datatype name' ),
+        $this->eZDataType( self::DATA_TYPE_STRING, ezi18n( 'kernel/classes/datatypes', 'UNIX name', 'Datatype name' ),
                            array( 'translation_allowed' => false,
                                   'serialize_supported' => true,
                                   'object_serialize_map' => array( 'data_text' => 'text',
@@ -38,38 +38,40 @@ class UnixNameType extends eZStringType
         $this->MaxLenValidator = new eZIntegerValidator();
     }
 
-    function validateStringHTTPInput( $data, &$contentObjectAttribute, &$classAttribute )
+    /*!
+     \reimp
+    */
+    function validateObjectAttributeHTTPInput( $http, $base, $contentObjectAttribute )
     {
         if ( $contentObjectAttribute->attribute( 'data_int' ) == 1 )
         {
-            return EZ_INPUT_VALIDATOR_STATE_ACCEPTED;
+            return eZInputValidator::STATE_ACCEPTED;
         }
 
-        $maxLen = $classAttribute->attribute( EZ_DATATYPESTRING_MAX_LEN_FIELD );
-        $textCodec =& eZTextCodec::instance( false );
-        if ( $textCodec->strlen( $data ) > $maxLen and
-             $maxLen > 0 )
+        return eZStringType::validateObjectAttributeHTTPInput( $http, $base, $contentObjectAttribute );
+    }
+
+    function validateStringHTTPInput( $data, $contentObjectAttribute, $classAttribute )
+    {
+        $result = eZStringType::validateStringHTTPInput( $data, $contentObjectAttribute, $classAttribute );
+
+        if ( $result !== eZInputValidator::STATE_ACCEPTED )
         {
-            $contentObjectAttribute->setValidationError( ezi18n( 'kernel/classes/datatypes',
-                                                                 'The input text is too long. The maximum number of characters allowed is %1.' ),
-                                                         $maxLen );
-            return EZ_INPUT_VALIDATOR_STATE_INVALID;
+            return $result;
         }
 
         if ( preg_match( '/^[a-z0-9-_]+$/', $data )  != 1 )
         {
             $contentObjectAttribute->setValidationError( ezi18n( 'kernel/classes/datatypes',
                                                                  'Invalid UNIX name. Allowed characters: a-z, 0-9, - and _' ) );
-            return EZ_INPUT_VALIDATOR_STATE_INVALID;
+            return eZInputValidator::STATE_INVALID;
         }
 
-        include_once( 'lib/ezdb/classes/ezdb.php' );
-        $db =& eZDB::instance();
+        $db = eZDB::instance();
 
-        include_once( 'kernel/classes/ezcontentobjectversion.php' );
         //eZDebug::createAccumulator( 'unixname', false, 'unix name uniqueness check SQL' );
         //eZDebug::accumulatorStart( 'unixname' );
-        $sql = 'SELECT DISTINCT a.contentobject_id FROM ezcontentobject_attribute a, ezcontentobject_version v  WHERE a.contentclassattribute_id=' . $classAttribute->attribute( 'id' ) . ' AND a.contentobject_id=v.contentobject_id AND a.version=v.version AND v.status IN (' . EZ_VERSION_STATUS_PUBLISHED . ',' . EZ_VERSION_STATUS_PENDING . ') and a.sort_key_string="' . $db->escapeString( $textCodec->convertString( $data ) ) . '"';
+        $sql = 'SELECT DISTINCT a.contentobject_id FROM ezcontentobject_attribute a, ezcontentobject_version v  WHERE a.contentclassattribute_id=' . $classAttribute->attribute( 'id' ) . ' AND a.contentobject_id=v.contentobject_id AND a.version=v.version AND v.status IN (' . eZContentObjectVersion::STATUS_PUBLISHED . ',' . eZContentObjectVersion::STATUS_PENDING . ') and a.sort_key_string="' . $db->escapeString( $data ) . '"';
 
         $result = $db->arrayQuery( $sql );
         //eZDebug::accumulatorStop( 'unixname' );
@@ -79,13 +81,13 @@ class UnixNameType extends eZStringType
         {
             $contentObjectAttribute->setValidationError( ezi18n( 'kernel/classes/datatypes',
                                                                  'This name is already in use. Choose another one.' ) );
-            return EZ_INPUT_VALIDATOR_STATE_INVALID;
+            return eZInputValidator::STATE_INVALID;
         }
 
-        return EZ_INPUT_VALIDATOR_STATE_ACCEPTED;
+        return eZInputValidator::STATE_ACCEPTED;
     }
 
-    function fetchObjectAttributeHTTPInput( &$http, $base, &$contentObjectAttribute )
+    function fetchObjectAttributeHTTPInput( $http, $base, $contentObjectAttribute )
     {
         // don't process if object is already published
         if ( $contentObjectAttribute->attribute( 'data_int' ) == 1 )
@@ -99,10 +101,10 @@ class UnixNameType extends eZStringType
             $contentObjectAttribute->setAttribute( 'data_text', $data );
             return true;
         }
-        return false;
+        return ;
     }
 
-    function onPublish( &$contentObjectAttribute, &$contentObject, &$publishedNodes )
+    function onPublish( $contentObjectAttribute, $contentObject, $publishedNodes )
     {
         // set a flag, so we know this attribute has content in the published version
         if ( $contentObjectAttribute->attribute( 'data_int' ) != 1 && $contentObjectAttribute->attribute( 'has_content' ) )
@@ -111,8 +113,16 @@ class UnixNameType extends eZStringType
             $contentObjectAttribute->store();
         }
     }
+
+    /*!
+     \reimp
+    */
+    function isInformationCollector()
+    {
+        return false;
+    }
 }
 
-eZDataType::register( EZ_DATATYPESTRING_UNIXNAME, "unixnametype" );
+eZDataType::register( UnixNameType::DATA_TYPE_STRING, "unixnametype" );
 
 ?>
