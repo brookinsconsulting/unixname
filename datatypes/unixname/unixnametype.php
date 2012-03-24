@@ -30,7 +30,7 @@ class UnixNameType extends eZStringType
 
     function UnixNameType()
     {
-        $this->eZDataType( self::DATA_TYPE_STRING, ezi18n( 'kernel/classes/datatypes', 'UNIX name', 'Datatype name' ),
+        $this->eZDataType( self::DATA_TYPE_STRING, ezpI18n::tr( 'kernel/classes/datatypes', 'UNIX name', 'Datatype name' ),
                            array( 'translation_allowed' => false,
                                   'serialize_supported' => true,
                                   'object_serialize_map' => array( 'data_text' => 'text',
@@ -62,7 +62,7 @@ class UnixNameType extends eZStringType
 
         if ( preg_match( '/^[a-z0-9-_]+$/', $data )  != 1 )
         {
-            $contentObjectAttribute->setValidationError( ezi18n( 'kernel/classes/datatypes',
+            $contentObjectAttribute->setValidationError( ezpI18n::tr( 'kernel/classes/datatypes',
                                                                  'Invalid UNIX name. Allowed characters: a-z, 0-9, - and _' ) );
             return eZInputValidator::STATE_INVALID;
         }
@@ -79,7 +79,7 @@ class UnixNameType extends eZStringType
         eZDebug::writeDebug( $result, 'UnixNameType::validateStringHTTPInput' );
         if ( count( $result ) > 0 )
         {
-            $contentObjectAttribute->setValidationError( ezi18n( 'kernel/classes/datatypes',
+            $contentObjectAttribute->setValidationError( ezpI18n::tr( 'kernel/classes/datatypes',
                                                                  'This name is already in use. Choose another one.' ) );
             return eZInputValidator::STATE_INVALID;
         }
